@@ -19,3 +19,6 @@ The results are given in a tekst file:
 - Mean freq per simulation: Mean number of voxels per simulation showing an overlap of a false positive result in at least n subjects and a false positive group effect
 - SD freq per simulation: Standard deviation of the number of voxels per simulation showing an overlap of a false positive result in at least n subjects and a false positive group effect
 - Max freq per simulation: Maximum number of voxels per simulation showing an overlap of a false positive result in at least n subjects and a false positive group effect
+
+
+The 'Result_analysis' folder contains a SPM toolbox to create activation count maps (ACM) or weighted overlap maps (WOM) from real fMRI results. The whole 'Result_analysis' folder should be saved as a subfolder in the 'SPM12/toolbox' folder.
