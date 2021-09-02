@@ -52,13 +52,12 @@ for nt = 1:iter
         
         fim = 1-normcdf(fim,mean(fim,'all'),std(fim,0,'all'));
         
-        fim2=fim;
         if wwidth==0
-            fim(fim2<=pthr)=1;      
-            fim(fim2>pthr)=0;
+            fim(fim<=pthr)=1;      
+            fim(fim>pthr)=0;
         else
-            fim(fim2<=pthr)=1;      
-            fim(fim2>pthr)=exp(-(1/2)*((fim2(fim2>pthr)-pthr)/wwidth).^2);
+            fim(fim<=pthr)=1;      
+            fim(fim>pthr)=exp(-(1/2)*((fim(fim>pthr)-pthr)/wwidth).^2);
         end
         
         fim = fim.*mask;
@@ -72,11 +71,13 @@ for nt = 1:iter
     ttestgr(~isfinite(ttestgr))=0;
     
     ttestgr = 1-tcdf(ttestgr,nsub-1,'upper');
-
-    ttestgr2=ttestgr;
-    ttestgr(ttestgr2<=pthr)=1;
-    ttestgr(ttestgr2>pthr)=0;
-
+pthr
+min(ttestgr,[],'all')
+max(ttestgr,[],'all')      
+    ttestgr(ttestgr<=pthr)=1;
+    ttestgr(ttestgr>pthr)=0;
+min(ttestgr,[],'all')
+max(ttestgr,[],'all')
     ttestgr = ttestgr.*mask;
     
     for ci = 0:nsub
@@ -94,8 +95,8 @@ for nt = 1:iter
     end     
 end
 
-mean_count = round(mean(iter_grcount,1))';
-sd_count = round(std(iter_grcount,0,1))';
+mean_count = round(mean(iter_count,1))';
+sd_count = round(std(iter_count,0,1))';
 
 prob_table = counttabel/(nxyz*iter);
 gr_prob = gr_count/(nxyz*iter);
