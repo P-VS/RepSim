@@ -12,6 +12,8 @@ mask = logical(mask);
 nxyz = numel(find(mask));
 dvoxel=max(voxdim);
 
+V=spm_vol(maskfile);
+
 outfile=fullfile(outdir,[outname,'.txt']);
 
 if fwhm(1) == 4
@@ -79,18 +81,35 @@ for nt = 1:iter
 
     ttestgr = ttestgr.*mask;
     
+    %V1=V;
+    %V1.fname = fullfile('/Users/accurad/Desktop','countim.nii');
+    %V1 = spm_create_vol(V1);
+    %V1 = spm_write_vol(V1,countim);
+    
+    %V2=V;
+    %V2.fname = fullfile('/Users/accurad/Desktop','testgr.nii');
+    %V2 = spm_create_vol(V2);
+    %V2 = spm_write_vol(V2,ttestgr);
+
+    %fprintf(['Total ind>0: ' num2str(numel(find(countim(mask)>=0))) '\n'])
+    %fprintf(['Total group>0: ' num2str(numel(find(ttestgr(mask)>0))) '\n'])
     for ci = 0:nsub
-        counttabel(ci+1) = counttabel(ci+1)+numel(find(countim(mask>0)>=ci));
-        iter_count(nt,ci+1) = numel(find(countim(mask>0)>=ci));
-
-        imask=find(countim>=ci);
+        %fprintf(['ind mask = ' num2str(ci) ': ' num2str(numel(find(and(countim(mask>0)>=ci-0.5,countim(mask>0)<ci+0.5)))) '\n'])
         
-        gr_count(ci+1) = gr_count(ci+1)+numel(find(ttestgr(imask)>0));
+        indmask = find(and(countim(mask)>=ci-0.5,countim(mask)<ci+0.5));
+        
+        counttabel(ci+1) = counttabel(ci+1)+numel(indmask);
+        iter_count(nt,ci+1) = numel(indmask);
 
-        max_count(ci+1) = max(max_count(ci+1),numel(find(ttestgr(imask)>0)));
-        iter_grcount(nt,ci+1) = numel(find(ttestgr(imask)>0));
+        grmask=find(and(and(countim>=ci-0.5,countim<ci+0.5),ttestgr>0));
+        %fprintf(['group mask = ' num2str(ci) ': ' num2str(numel(grmask)) '\n'])
+        
+        gr_count(ci+1) = gr_count(ci+1)+numel(grmask);
 
-        if numel(find(ttestgr(imask)>0))>0; count_sim(ci+1)=count_sim(ci+1)+1; end  
+        max_count(ci+1) = max(max_count(ci+1),numel(grmask));
+        iter_grcount(nt,ci+1) = numel(grmask);
+
+        if numel(grmask)>0; count_sim(ci+1)=count_sim(ci+1)+1; end  
     end     
 end
 
@@ -155,8 +174,8 @@ fprintf(fid,'\nBonferroni corrected p(unc) = %.2e\n',p_bonf);
 
 fprintf(fid,['\nNumber of subjects (n)', ...
              '\tPercentage of subjects',...
-             '\tFrequency >=n',...
-             '\tProbability of >=n', ...
+             '\tFrequency =n',...
+             '\tProbability of =n', ...
              '\tFreq significant group',...
              '\tProbability significant group', ...
              '\tFound in x simulations',...
