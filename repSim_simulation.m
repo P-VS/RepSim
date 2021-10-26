@@ -81,20 +81,7 @@ for nt = 1:iter
 
     ttestgr = ttestgr.*mask;
     
-    %V1=V;
-    %V1.fname = fullfile('/Users/accurad/Desktop','countim.nii');
-    %V1 = spm_create_vol(V1);
-    %V1 = spm_write_vol(V1,countim);
-    
-    %V2=V;
-    %V2.fname = fullfile('/Users/accurad/Desktop','testgr.nii');
-    %V2 = spm_create_vol(V2);
-    %V2 = spm_write_vol(V2,ttestgr);
-
-    %fprintf(['Total ind>0: ' num2str(numel(find(countim(mask)>=0))) '\n'])
-    %fprintf(['Total group>0: ' num2str(numel(find(ttestgr(mask)>0))) '\n'])
     for ci = 0:nsub
-        %fprintf(['ind mask = ' num2str(ci) ': ' num2str(numel(find(and(countim(mask>0)>=ci-0.5,countim(mask>0)<ci+0.5)))) '\n'])
         
         indmask = find(and(countim(mask)>=ci-0.5,countim(mask)<ci+0.5));
         
@@ -102,7 +89,6 @@ for nt = 1:iter
         iter_count(nt,ci+1) = numel(indmask);
 
         grmask=find(and(and(countim>=ci-0.5,countim<ci+0.5),ttestgr>0));
-        %fprintf(['group mask = ' num2str(ci) ': ' num2str(numel(grmask)) '\n'])
         
         gr_count(ci+1) = gr_count(ci+1)+numel(grmask);
 
