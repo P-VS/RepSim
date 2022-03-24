@@ -105,8 +105,6 @@ sd_count = round(std(iter_grcount,0,1))';
 prob_table = counttabel/(nxyz*iter);
 gr_prob = gr_count/(nxyz*iter);
 
-p_bonf = 0.05/nxyz;
-
 repsimulation.resultfile = outfile;
 repsimulation.maskfile = maskfile;
 repsimulation.fwhm = fwhm;
@@ -156,8 +154,6 @@ end
 fprintf(fid,'Number of subjects = %d\n',nsub);
 fprintf(fid,'Number of Monte Carlo simulations = %d\n',iter);
 
-fprintf(fid,'\nBonferroni corrected p(unc) = %.2e\n',p_bonf);
-
 fprintf(fid,['\nNumber of subjects (n)', ...
              '\tPercentage of subjects',...
              '\tFrequency =n',...
@@ -167,10 +163,12 @@ fprintf(fid,['\nNumber of subjects (n)', ...
              '\tFound in x simulations',...
              '\tMean freq per simulation',...
              '\tSD freq per simulation',...
-             '\tMax freq per simulation']);
+             '\tMax freq per simulation',...
+             '\tp corrected']);
 
 for i=0:nsub
-    fprintf(fid,'\n\t%d\t%d\t%d\t%.3e\t%d\t%.3e\t%d\t%d\t%d\t%d',i,(i/nsub)*100,counttabel(i+1),prob_table(i+1),gr_count(i+1),gr_prob(i+1),count_sim(i+1),mean_count(i+1),sd_count(i+1),max_count(i+1));
+    p_corrected = 1-(1-gr_prob(i+1))^nxyz;
+    fprintf(fid,'\n\t%d\t%d\t%d\t%.3e\t%d\t%.3e\t%d\t%d\t%d\t%d\t%.3e',i,(i/nsub)*100,counttabel(i+1),prob_table(i+1),gr_count(i+1),gr_prob(i+1),count_sim(i+1),mean_count(i+1),sd_count(i+1),max_count(i+1),p_corrected);
 end
 
 fclose(fid);
