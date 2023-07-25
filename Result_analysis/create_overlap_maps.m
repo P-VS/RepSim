@@ -39,8 +39,12 @@ for i=1:numel(job.indTmaps)
     PM.dim=size(pim);
     PM.mat=mat;
     PM.fname=fullfile(tpth,['spmP_' stnam{2} '.nii']);
-    PM=spm_create_vol(PM);
-    PM=spm_write_vol(PM,pim);
+    PM.descrip = ['spmP_' stnam{2}];
+    PM.pinfo = [1,0,0];
+    PM.dt = [spm_type('float32'),spm_platform('bigend')];
+    PM.n = [1 1];
+    
+    PM = resanat_write_vol_4d(PM,pim);
 
     if job.omtype==1
         if job.thresok==1
@@ -86,9 +90,7 @@ else
     OLThres=job.olthres*numel(job.indTmaps);
 end
 
-overlapmask = overlapmap;
-THmask=find(overlapmap<OLThres);
-overlapmask(THmask)=0;
+overlapmask = overlapmap*0;
 overlapmask(overlapmap>=OLThres)=1;
 
 [tpth,tnam,text] = spm_fileparts(job.indTmaps{1});
@@ -97,27 +99,37 @@ stnam=split(tnam,'_');
 
 if size(stnam)<2, stnam{2}=''; end
 
-thresname=strrep(num2str(OLThres),'.','');
+thresname=strrep(num2str(OLThres*100),'.','');
 
 if job.omtype==1
-    ofname=fullfile(job.outdir{:},['ACM_spmT_' stnam{2} '_thres' thresname '.nii']);
+    ofname=fullfile(job.outdir{:},['ACM_spmT_' stnam{2} '.nii']);
     mfname=fullfile(job.outdir{:},['mask_ACM_spmT_' stnam{2} '_thres' thresname '.nii']);
 else
     wname=strrep(num2str(job.wwidth),'.','');
-    ofname=fullfile(job.outdir{:},['WOM_spmT_' stnam{2} '_thres' thresname '_w' wname '.nii']);
+    ofname=fullfile(job.outdir{:},['WOM_spmT_' stnam{2} '_w' wname '.nii']);
     mfname=fullfile(job.outdir{:},['mask_WOM_spmT_' stnam{2} '_thres' thresname '_w' wname '.nii']);
 end
 
 OM.dim=size(overlapmap);
 OM.mat=mat;
 OM.fname=ofname;
-OM=spm_create_vol(OM);
-OM=spm_write_vol(OM,overlapmap);
+OM.descrip = 'Result Overlap Map';
+OM.pinfo = [1,0,0];
+OM.dt = [spm_type('float32'),spm_platform('bigend')];
+OM.n = [1 1];
 
-MM.dim=size(overlapmask);
-MM.mat=mat;
-MM.fname=mfname;
-MM=spm_create_vol(MM);
-MM=spm_write_vol(MM,overlapmask);
+OM = resanat_write_vol_4d(OM,overlapmap);
+
+if OLThres>0
+    MM.dim=size(overlapmask);
+    MM.mat=mat;
+    MM.fname=mfname;
+    MM.descrip = 'Result Overlap Mask';
+    MM.pinfo = [1,0,0];
+    MM.dt = [spm_type('float32'),spm_platform('bigend')];
+    MM.n = [1 1];
+    
+    MM = resanat_write_vol_4d(MM,overlapmask);
+end
 
 out=[OM.fname];
