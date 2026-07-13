@@ -3,7 +3,7 @@
 
 %Author: dr. Peter Van Schuerbeek (UZ Brussel - VUB)
 
-function repSim_simulation(maskfile,fwhm,pthr,wwidth,nsub,iter,outdir,outname)
+function repSim_simulation(maskfile,fwhm,ind_type,pthr,wwidth,mean_falff,sd_falff,pthr_group,nsub,iter,outdir,outname)
 
 [maskpath, maskname, masketc]=fileparts(maskfile);
 [mask,voxdim,header]=rp_readfile(maskfile);
@@ -51,19 +51,35 @@ for nt = 1:iter
         end
         
         fim4d(:,:,:,ns)=fim;
-        
-        fim = 1-normcdf(fim,mean(fim,'all'),std(fim,0,'all'));
-        
-        fim2=fim;
-        if wwidth==0
-            fim(fim2<=pthr)=1;      
-            fim(fim2>pthr)=0;
-        else
-            fim(fim2<=pthr)=1;      
-            fim(fim2>pthr)=exp(-(1/2)*((fim2(fim2>pthr)-pthr)/wwidth).^2);
+
+        switch ind_type
+            case 'spmT' 
+                fim = 1-normcdf(fim,mean(fim,'all'),std(fim,0,'all'));
+                
+                fim2=fim;
+                if wwidth==0
+                    fim(fim2<=pthr)=1;      
+                    fim(fim2>pthr)=0;
+                else
+                    fim(fim2<=pthr)=1;      
+                    fim(fim2>pthr)=exp(-(1/2)*((fim2(fim2>pthr)-pthr)/wwidth).^2);
+                end
+                
+                fim = fim.*mask;
+
+                clear fim2
+            case 'FALFF'
+                fim=sd_falff*rand(nx,ny,nz)+mean_falff;
+
+                %if fwhm(1)*fwhm(2)*fwhm(3) ~= 0
+                %    fim = gauss_filter(fwhm,fim,voxdim); 
+                %end
+
+                fim(fim>=pthr)=1;      
+                fim(fim<pthr)=0;
+
+                fim = fim.*mask;
         end
-        
-        fim = fim.*mask;
         
         countim = countim+fim;
     end
@@ -76,8 +92,8 @@ for nt = 1:iter
     ttestgr = 1-tcdf(ttestgr,nsub-1,'upper');
 
     ttestgr2=ttestgr;
-    ttestgr(ttestgr2<=pthr)=1;
-    ttestgr(ttestgr2>pthr)=0;
+    ttestgr(ttestgr2<=pthr_group)=1;
+    ttestgr(ttestgr2>pthr_group)=0;
 
     ttestgr = ttestgr.*mask;
     
@@ -107,9 +123,11 @@ gr_prob = gr_count/(nxyz*iter);
 
 repsimulation.resultfile = outfile;
 repsimulation.maskfile = maskfile;
+repsimulation.ind_type = ind_type;
 repsimulation.fwhm = fwhm;
-repsimulation.pthr = pthr;
+repsimulation.pthr_ind = pthr;
 repsimulation.wwidth = wwidth;
+repsimulation.pthr_group = pthr_group;
 repsimulation.nsub = nsub;
 repsimulation.iter = iter;
 repsimulation.nxyz = nxyz;
@@ -136,12 +154,14 @@ fprintf(fid,'RepSim: Monte Carlo simulations to determine the probability of rep
 fprintf(fid,'\nThis tool is bassed on AlphaSim as implemented in REST');
 fprintf(fid,'\nAuthor: dr. Peter Van Schuerbeek (UZ Brussel - VUB)\n');
 
+fprintf(fid,'\nType individual maps = %s',ind_type);
 fprintf(fid,'\nMask filename = %s\n',maskfile);
 fprintf(fid,'Voxels in mask = %d\n',nxyz);
 fprintf(fid,'Gaussian filter width (FWHMx, in mm) = %.3f\n',fwhm(1));
 fprintf(fid,'Gaussian filter width (FWHMy, in mm) = %.3f\n',fwhm(2));
 fprintf(fid,'Gaussian filter width (FWHMz, in mm) = %.3f\n',fwhm(3));
 fprintf(fid,'Individual voxel threshold probability = %.3f\n',pthr);
+fprintf(fid,'Group voxel threshold probability = %.3f\n',pthr_group);
 if wwidth>0
     fprintf(fid,'Weidthed filter width = %.3f\n',wwidth);
     fprintf(fid,'Applied weighting function:\n');
