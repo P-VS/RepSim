@@ -3,7 +3,7 @@
 
 %Author: dr. Peter Van Schuerbeek (UZ Brussel - VUB)
 
-function repSim_simulation(maskfile,fwhm,ind_type,pthr,wwidth,mean_falff,sd_falff,pthr_group,nsub,iter,outdir,outname)
+function repSim_simulation(maskfile,fwhm,ind_type,pthr,thr_type,wwidth,mean_falff,sd_falff,pthr_group,nsub,iter,outdir,outname)
 
 [maskpath, maskname, masketc]=fileparts(maskfile);
 [mask,voxdim,header]=rp_readfile(maskfile);
@@ -34,6 +34,8 @@ max_count = zeros(1,nsub+1);
 iter_grcount = zeros(iter,nsub+1);
 iter_count = zeros(iter,nsub+1);
 
+nclus_sim = [];
+
 gr_count = zeros(1,nsub+1);
 
 for nt = 1:iter
@@ -52,36 +54,34 @@ for nt = 1:iter
         
         fim4d(:,:,:,ns)=fim;
 
-        switch ind_type
-            case 'spmT' 
-                fim = 1-normcdf(fim,mean(fim,'all'),std(fim,0,'all'));
-                
-                fim2=fim;
-                if wwidth==0
-                    fim(fim2<=pthr)=1;      
-                    fim(fim2>pthr)=0;
-                else
-                    fim(fim2<=pthr)=1;      
-                    fim(fim2>pthr)=exp(-(1/2)*((fim2(fim2>pthr)-pthr)/wwidth).^2);
-                end
-                
-                fim = fim.*mask;
-
-                clear fim2
-            case 'FALFF'
-                fim=sd_falff*rand(nx,ny,nz)+mean_falff;
-
-                %if fwhm(1)*fwhm(2)*fwhm(3) ~= 0
-                %    fim = gauss_filter(fwhm,fim,voxdim); 
-                %end
-
-                fim(fim>=pthr)=1;      
-                fim(fim<pthr)=0;
-
-                fim = fim.*mask;
+        if contains(thr_type,'overlap')
+            switch ind_type
+                case 'spmT' 
+                    fim = 1-normcdf(fim,mean(fim,'all'),std(fim,0,'all'));
+                    
+                    fim2=fim;
+                    if wwidth==0
+                        fim(fim2<=pthr)=1;      
+                        fim(fim2>pthr)=0;
+                    else
+                        fim(fim2<=pthr)=1;      
+                        fim(fim2>pthr)=exp(-(1/2)*((fim2(fim2>pthr)-pthr)/wwidth).^2);
+                    end
+                    
+                    fim = fim.*mask;
+    
+                    clear fim2
+                case 'FALFF'
+                    fim=sd_falff*rand(nx,ny,nz)+mean_falff;
+    
+                    fim(fim>=pthr)=1;      
+                    fim(fim<pthr)=0;
+    
+                    fim = fim.*mask;
+            end
+            
+            countim = countim+fim;
         end
-        
-        countim = countim+fim;
     end
     
     meangr = mean(fim4d,4);
@@ -97,101 +97,162 @@ for nt = 1:iter
 
     ttestgr = ttestgr.*mask;
     
-    for ci = 0:nsub
+    switch thr_type
+        case 'overlap'
+            for ci = 0:nsub
+                indmask = find(and(countim(mask)>=ci-0.5,countim(mask)<ci+0.5));
+                
+                counttabel(ci+1) = counttabel(ci+1)+numel(indmask);
+                iter_count(nt,ci+1) = numel(indmask);
         
-        indmask = find(and(countim(mask)>=ci-0.5,countim(mask)<ci+0.5));
+                grmask=find(and(and(countim>=ci-0.5,countim<ci+0.5),ttestgr>0));
+                
+                gr_count(ci+1) = gr_count(ci+1)+numel(grmask);
         
-        counttabel(ci+1) = counttabel(ci+1)+numel(indmask);
-        iter_count(nt,ci+1) = numel(indmask);
-
-        grmask=find(and(and(countim>=ci-0.5,countim<ci+0.5),ttestgr>0));
+                max_count(ci+1) = max(max_count(ci+1),numel(grmask));
+                iter_grcount(nt,ci+1) = numel(grmask);
         
-        gr_count(ci+1) = gr_count(ci+1)+numel(grmask);
+                if numel(grmask)>0; count_sim(ci+1)=count_sim(ci+1)+1; end  
+            end     
+        case 'clustersize'
+            [theCluster, theCount] = spm_bwlabel(ttestgr, 26);
 
-        max_count(ci+1) = max(max_count(ci+1),numel(grmask));
-        iter_grcount(nt,ci+1) = numel(grmask);
+            isim_list = zeros(1,theCount);
 
-        if numel(grmask)>0; count_sim(ci+1)=count_sim(ci+1)+1; end  
-    end     
+            for iclus=1:theCount
+                isim_list(iclus)=numel(find(theCluster==iclus));
+            end
+
+            for iclus=1:theCount
+                if numel(nclus_sim)<isim_list(iclus)
+                    nclus_sim(isim_list(iclus)) = 1;
+                else
+                    nclus_sim(isim_list(iclus)) = nclus_sim(isim_list(iclus)) + 1;
+                end
+            end
+    end
 end
 
-mean_count = round(mean(iter_grcount,1))';
-sd_count = round(std(iter_grcount,0,1))';
+if exist(outfile,"file"), delete(outfile); end
 
-prob_table = counttabel/(nxyz*iter);
-gr_prob = gr_count/(nxyz*iter);
+switch thr_type
+    case 'overlap'
+        mean_count = round(mean(iter_grcount,1))';
+        sd_count = round(std(iter_grcount,0,1))';
+        
+        prob_table = counttabel/(nxyz*iter);
+        gr_prob = gr_count/(nxyz*iter);
 
-repsimulation.resultfile = outfile;
-repsimulation.maskfile = maskfile;
-repsimulation.ind_type = ind_type;
-repsimulation.fwhm = fwhm;
-repsimulation.pthr_ind = pthr;
-repsimulation.wwidth = wwidth;
-repsimulation.pthr_group = pthr_group;
-repsimulation.nsub = nsub;
-repsimulation.iter = iter;
-repsimulation.nxyz = nxyz;
+        repsimulation.counttabel = counttabel;
+        repsimulation.prob_table = prob_table;
+        repsimulation.gr_count = gr_count;
+        repsimulation.gr_prob = gr_prob;
+        repsimulation.count_sim = count_sim;
+        repsimulation.mean_count = mean_count;
+        repsimulation.sd_count = sd_count;
+        repsimulation.max_count = max_count;
 
-repsimulation.counttabel = counttabel;
-repsimulation.prob_table = prob_table;
-repsimulation.gr_count = gr_count;
-repsimulation.gr_prob = gr_prob;
-repsimulation.count_sim = count_sim;
-repsimulation.mean_count = mean_count;
-repsimulation.sd_count = sd_count;
-repsimulation.max_count = max_count;
+        repsimulation.iter_count = iter_count;
+        repsim
+        
+        repsimulation.resultfile = outfile;
+        repsimulation.maskfile = maskfile;
+        repsimulation.ind_type = ind_type;
+        repsimulation.fwhm = fwhm;
+        repsimulation.pthr_ind = pthr;
+        repsimulation.wwidth = wwidth;
+        repsimulation.pthr_group = pthr_group;
+        repsimulation.nsub = nsub;
+        repsimulation.iter = iter;
+        repsimulation.nxyz = nxyz;
+        ulation.iter_grcount = iter_grcount;
+        
+        matfile = fullfile(outdir,[outname,'.mat']);
+        
+        save(matfile,'repsimulation');
+        
+        fid=fopen(sprintf('%s',outfile),'w');
+        
+        fprintf(fid,'RepSim: Monte Carlo simulations to determine the probability of repeated false positive results');
+        fprintf(fid,'\nThis tool is bassed on AlphaSim as implemented in REST');
+        fprintf(fid,'\nAuthor: dr. Peter Van Schuerbeek (UZ Brussel - VUB)\n');
+        
+        fprintf(fid,'\nType individual maps = %s',ind_type);
+        fprintf(fid,'\nMask filename = %s\n',maskfile);
+        fprintf(fid,'Voxels in mask = %d\n',nxyz);
+        fprintf(fid,'Gaussian filter width (FWHMx, in mm) = %.3f\n',fwhm(1));
+        fprintf(fid,'Gaussian filter width (FWHMy, in mm) = %.3f\n',fwhm(2));
+        fprintf(fid,'Gaussian filter width (FWHMz, in mm) = %.3f\n',fwhm(3));
+        fprintf(fid,'Individual voxel threshold probability = %.3f\n',pthr);
+        fprintf(fid,'Group voxel threshold probability = %.3f\n',pthr_group);
+        if wwidth>0
+            fprintf(fid,'Weidthed filter width = %.3f\n',wwidth);
+            fprintf(fid,'Applied weighting function:\n');
+            fprintf(fid,'1 if p<=pthres\n');
+            fprintf(fid,'exp(-(1/2)*((p-pthres)/width)^2) if p>pthres\n');
+        else
+            fprintf(fid,'No wighting filter applied\n');
+        end
+            
+        fprintf(fid,'Number of subjects = %d\n',nsub);
+        fprintf(fid,'Number of Monte Carlo simulations = %d\n',iter);
+        
+        fprintf(fid,['\nNumber of subjects (n)', ...
+                     '\tPercentage of subjects',...
+                     '\tFrequency =n',...
+                     '\tProbability of =n', ...
+                     '\tFreq significant group',...
+                     '\tProbability significant group', ...
+                     '\tFound in x simulations',...
+                     '\tMean freq per simulation',...
+                     '\tSD freq per simulation',...
+                     '\tMax freq per simulation',...
+                     '\tp corrected']);
+        
+        for i=0:nsub
+            p_corrected = 1-(1-gr_prob(i+1))^nxyz;
+            fprintf(fid,'\n\t%d\t%d\t%d\t%.3e\t%d\t%.3e\t%d\t%d\t%d\t%d\t%.3e',i,(i/nsub)*100,counttabel(i+1),prob_table(i+1),gr_count(i+1),gr_prob(i+1),count_sim(i+1),mean_count(i+1),sd_count(i+1),max_count(i+1),p_corrected);
+        end
+        
+        fclose(fid);
+    case 'clustersize'
+        clus_vox = nclus_sim;
 
-repsimulation.iter_count = iter_count;
-repsimulation.iter_grcount = iter_grcount;
+        tmp = find(nclus_sim>0);
+        clus_vox(tmp) = nclus_sim(tmp) .* tmp;
 
-matfile = fullfile(outdir,[outname,'.mat']);
+        nvox_sim = [];
+        for iclussize=1:numel(nclus_sim)
+            nvox_sim(iclussize) = sum(clus_vox(iclussize:end));
+        end
 
-save(matfile,'repsimulation');
+        fid=fopen(sprintf('%s',outfile),'w');
 
-fid=fopen(sprintf('%s',outfile),'w');
+        fprintf(fid,'RepSim: Monte Carlo simulations to determine the probability of false positive results');
+        fprintf(fid,'\nThis tool is bassed on AlphaSim as implemented in REST');
+        fprintf(fid,'\nAuthor: dr. Peter Van Schuerbeek (UZ Brussel - VUB)\n');
 
-fprintf(fid,'RepSim: Monte Carlo simulations to determine the probability of repeated false positive results');
-fprintf(fid,'\nThis tool is bassed on AlphaSim as implemented in REST');
-fprintf(fid,'\nAuthor: dr. Peter Van Schuerbeek (UZ Brussel - VUB)\n');
+        fprintf(fid,'\nType individual maps = %s',ind_type);
+        fprintf(fid,'\nMask filename = %s\n',maskfile);
+        fprintf(fid,'Voxels in mask = %d\n',nxyz);
+        fprintf(fid,'Gaussian filter width (FWHMx, in mm) = %.3f\n',fwhm(1));
+        fprintf(fid,'Gaussian filter width (FWHMy, in mm) = %.3f\n',fwhm(2));
+        fprintf(fid,'Gaussian filter width (FWHMz, in mm) = %.3f\n',fwhm(3));
+        fprintf(fid,'Group voxel threshold probability = %.3f\n',pthr_group);
+        fprintf(fid,'Number of subjects = %d\n',nsub);
+        fprintf(fid,'Number of Monte Carlo simulations = %d\n',iter);
 
-fprintf(fid,'\nType individual maps = %s',ind_type);
-fprintf(fid,'\nMask filename = %s\n',maskfile);
-fprintf(fid,'Voxels in mask = %d\n',nxyz);
-fprintf(fid,'Gaussian filter width (FWHMx, in mm) = %.3f\n',fwhm(1));
-fprintf(fid,'Gaussian filter width (FWHMy, in mm) = %.3f\n',fwhm(2));
-fprintf(fid,'Gaussian filter width (FWHMz, in mm) = %.3f\n',fwhm(3));
-fprintf(fid,'Individual voxel threshold probability = %.3f\n',pthr);
-fprintf(fid,'Group voxel threshold probability = %.3f\n',pthr_group);
-if wwidth>0
-    fprintf(fid,'Weidthed filter width = %.3f\n',wwidth);
-    fprintf(fid,'Applied weighting function:\n');
-    fprintf(fid,'1 if p<=pthres\n');
-    fprintf(fid,'exp(-(1/2)*((p-pthres)/width)^2) if p>pthres\n');
-else
-    fprintf(fid,'No wighting filter applied\n');
+        fprintf(fid,['\nCluster size (n)', ...
+            '\tFrequency =n',...
+            '\tNumber of voxels if Ke>=n',...
+            '\tProbability']);
+
+        for i=1:numel(nclus_sim)
+            fprintf(fid,'\n\t%d\t%d\t%d\t%.3e',i,nclus_sim(i),nvox_sim(i),nvox_sim(i)/(nxyz*iter));
+        end
+
+        fclose(fid);
 end
-    
-fprintf(fid,'Number of subjects = %d\n',nsub);
-fprintf(fid,'Number of Monte Carlo simulations = %d\n',iter);
-
-fprintf(fid,['\nNumber of subjects (n)', ...
-             '\tPercentage of subjects',...
-             '\tFrequency =n',...
-             '\tProbability of =n', ...
-             '\tFreq significant group',...
-             '\tProbability significant group', ...
-             '\tFound in x simulations',...
-             '\tMean freq per simulation',...
-             '\tSD freq per simulation',...
-             '\tMax freq per simulation',...
-             '\tp corrected']);
-
-for i=0:nsub
-    p_corrected = 1-(1-gr_prob(i+1))^nxyz;
-    fprintf(fid,'\n\t%d\t%d\t%d\t%.3e\t%d\t%.3e\t%d\t%d\t%d\t%d\t%.3e',i,(i/nsub)*100,counttabel(i+1),prob_table(i+1),gr_count(i+1),gr_prob(i+1),count_sim(i+1),mean_count(i+1),sd_count(i+1),max_count(i+1),p_corrected);
-end
-
-fclose(fid);
 
 fprintf('Done\n')
 
