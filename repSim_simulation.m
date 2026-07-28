@@ -245,10 +245,11 @@ switch thr_type
         fprintf(fid,['\nCluster size (n)', ...
             '\tFrequency =n',...
             '\tNumber of voxels if Ke>=n',...
-            '\tProbability']);
+            '\tProbability',...
+            '\tAlpha']);
 
         for i=1:numel(nclus_sim)
-            fprintf(fid,'\n\t%d\t%d\t%d\t%.3e',i,nclus_sim(i),nvox_sim(i),nvox_sim(i)/(nxyz*iter));
+            fprintf(fid,'\n\t%d\t%d\t%d\t%.3e\t%3f',i,nclus_sim(i),nvox_sim(i),nvox_sim(i)/(nxyz*iter),1-(1-(nvox_sim(i)/(nxyz*iter)))^nxyz);
         end
 
         fclose(fid);
