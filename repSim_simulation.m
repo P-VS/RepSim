@@ -153,7 +153,6 @@ switch thr_type
         repsimulation.max_count = max_count;
 
         repsimulation.iter_count = iter_count;
-        repsim
         
         repsimulation.resultfile = outfile;
         repsimulation.maskfile = maskfile;
@@ -249,7 +248,7 @@ switch thr_type
             '\tAlpha']);
 
         for i=1:numel(nclus_sim)
-            fprintf(fid,'\n\t%d\t%d\t%d\t%.3e\t%3f',i,nclus_sim(i),nvox_sim(i),nvox_sim(i)/(nxyz*iter),1-(1-(nvox_sim(i)/(nxyz*iter)))^nxyz);
+            fprintf(fid,'\n\t%d\t%d\t%d\t%.3e\t%3f',i,nclus_sim(i),nvox_sim(i),nvox_sim(i)/(iter*nxyz*iter),1-(1-(nvox_sim(i)/(iter*nxyz*iter)))^nxyz);
         end
 
         fclose(fid);
