@@ -1,24 +1,24 @@
 function RepSim
 
 maskfile = '/Volumes/LaCie/UZ_Brussel/ASLBOLD_Manon/Groepsanalyse/Test31PP_PREcog Ses-001/DUNE-BOLD_HRF/mask_bold.nii';
-outdir = '/Volumes/LaCie/UZ_Brussel/ASLBOLD_Manon/Groepsanalyse/Test31PP_PREcog Ses-001/';
+outdir = '/Volumes/LaCie/UZ_Brussel/ASLBOLD_Manon/Groepsanalyse/Test31PP DUNE-MEICA Scan 1/';
 
-outname = 'repSim_ClusSize_Go-NoGo_p0.001';
+outname = 'repSim_ClusSize_Go-NoGo_p0.005_fwhm11mm';
 
-ind_type = 'FALFF'; %Type of underlaying individual maps 'spmT'
+ind_type = 'spmT'; %Type of underlaying individual maps 'spmT'
 thr_type = 'clustersize'; %Type of MC correction 'overlap' or 'clustersize'
 
 mean_falff = 0.42;
 sd_falff = 0.2;
 
-pthr_ind = 0.001; %p threshold on the individual result maps
+pthr_ind = 0.005; %p threshold on the individual result maps
 wwidth = 0.001; %weighting width in the weighting function: '1 if p=<pthr_ind'; 'exp(-(1/2)*((p-pthr_ind)/wwidth)^2) if p>pthr_ind'
-pthr_group = 0.001; %p threshold on the individual result maps
+pthr_group = 0.005; %p threshold on the individual result maps
 
 nsub = 31; %number of simulated subjects
-niter = 1000; %number of simulated experiiments
+niter = 1000; %number of simulated experiments
 
-fwhm = [6 6 6];%rp_Smoothest_gui; %smoothnes in the image. Default [4,4,4] or estimated from a statisticall map with rp_Smoothest_gui
+fwhm = [11 11 11];%rp_Smoothest_gui; %smoothnes in the image. Default [4,4,4] or estimated from a statisticall map with rp_Smoothest_gui
 
 spm_path = '/Users/petervanschuerbeek/Library/Mobile Documents/com~apple~CloudDocs/Matlab/spm25';
 addpath(genpath(spm_path));
